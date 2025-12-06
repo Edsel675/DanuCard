@@ -21,13 +21,180 @@ import plotly.graph_objects as go
 import numpy as np
 import os
 import re
-from datetime import datetime
-from churn_predictor import ChurnPredictor
+from datetime import datetime, timedelta
+import random
+
+# ============================================================
+# 🎭 MODO DEMO - Datos ficticios para demostración
+# ============================================================
+DEMO_MODE = True  # Cambiar a False para usar datos reales
 
 # Limpiar caché al inicio (solo una vez por sesión)
 if 'cache_cleared' not in st.session_state:
     st.cache_data.clear()
     st.session_state.cache_cleared = True
+
+def generate_dummy_data():
+    """Genera datos ficticios para demostración del dashboard"""
+    np.random.seed(42)
+    random.seed(42)
+    
+    # ============ DATOS HISTÓRICOS (12 meses) ============
+    dates = pd.date_range(end=datetime.now(), periods=12, freq='M')
+    
+    # Generar tendencia realista de churn (empieza alto, baja con el tiempo)
+    base_churn = 15  # 15% base
+    churn_rates = [base_churn + np.random.normal(0, 2) - i*0.3 for i in range(12)]
+    churn_rates = [max(5, min(25, c)) for c in churn_rates]  # Limitar entre 5-25%
+    
+    # Ingresos crecientes
+    base_income = 500000
+    incomes = [base_income * (1 + i*0.08) + np.random.normal(0, 30000) for i in range(12)]
+    
+    # Transacciones crecientes
+    base_tx = 50000
+    transactions = [int(base_tx * (1 + i*0.05) + np.random.normal(0, 2000)) for i in range(12)]
+    
+    df_history = pd.DataFrame({
+        'Fecha': dates,
+        'Tasa Churn': churn_rates,
+        'Ingresos': incomes,
+        'Transacciones': transactions
+    })
+    
+    # ============ PREDICCIONES FUTURAS (3 meses) ============
+    future_dates = pd.date_range(start=dates[-1], periods=4, freq='M')[1:]
+    last_churn = churn_rates[-1]
+    future_churn = [last_churn - 0.5*i + np.random.normal(0, 0.5) for i in range(1, 4)]
+    future_income = [incomes[-1] * (1.05 ** i) for i in range(1, 4)]
+    
+    df_future = pd.DataFrame({
+        'Fecha': future_dates,
+        'Predicción Churn': future_churn,
+        'Ingresos Proyectados': future_income
+    })
+    
+    # ============ CLIENTES (500 clientes demo) ============
+    n_clients = 500
+    
+    # Generar IDs de cliente
+    client_ids = [f"USR{str(i).zfill(6)}" for i in range(1, n_clients + 1)]
+    
+    # Segmentos con distribución realista
+    segments = np.random.choice(['Básico', 'Premium', 'VIP'], n_clients, p=[0.5, 0.35, 0.15])
+    
+    # Probabilidad de churn basada en segmento
+    churn_probs = []
+    for seg in segments:
+        if seg == 'VIP':
+            churn_probs.append(np.random.beta(2, 10))  # Bajo churn
+        elif seg == 'Premium':
+            churn_probs.append(np.random.beta(3, 7))   # Medio churn
+        else:
+            churn_probs.append(np.random.beta(4, 6))   # Alto churn
+    
+    # Nivel de riesgo basado en probabilidad
+    def get_risk(prob):
+        if prob < 0.25:
+            return 'Bajo'
+        elif prob < 0.50:
+            return 'Medio'
+        elif prob < 0.75:
+            return 'Alto'
+        else:
+            return 'Crítico'
+    
+    risks = [get_risk(p) for p in churn_probs]
+    
+    # Días sin transacciones correlacionados con riesgo
+    days_no_tx = []
+    for risk in risks:
+        if risk == 'Bajo':
+            days_no_tx.append(np.random.randint(0, 15))
+        elif risk == 'Medio':
+            days_no_tx.append(np.random.randint(10, 30))
+        elif risk == 'Alto':
+            days_no_tx.append(np.random.randint(25, 42))
+        else:
+            days_no_tx.append(np.random.randint(35, 60))
+    
+    # Monto total basado en segmento
+    amounts = []
+    for seg in segments:
+        if seg == 'VIP':
+            amounts.append(np.random.uniform(50000, 200000))
+        elif seg == 'Premium':
+            amounts.append(np.random.uniform(10000, 50000))
+        else:
+            amounts.append(np.random.uniform(500, 10000))
+    
+    # Churn real (basado en días sin transacciones >= 42)
+    churned = [d >= 42 for d in days_no_tx]
+    
+    df_clients = pd.DataFrame({
+        'ID': client_ids,
+        'Segmento': pd.Categorical(segments, categories=['Básico', 'Premium', 'VIP'], ordered=True),
+        'Probabilidad Churn': churn_probs,
+        'Riesgo': pd.Categorical(risks, categories=['Bajo', 'Medio', 'Alto', 'Crítico'], ordered=True),
+        'Días sin Trans': days_no_tx,
+        'Monto Total': amounts,
+        'Churn': churned
+    })
+    
+    # ============ LLAMADAS/REPORTES (1000 registros) ============
+    n_calls = 1000
+    call_dates = [datetime.now() - timedelta(days=np.random.randint(0, 90)) for _ in range(n_calls)]
+    motivos = [
+        'Consulta de saldo', 'Problema con tarjeta', 'Transferencia fallida',
+        'Solicitud de información', 'Queja por cobros', 'Bloqueo de cuenta',
+        'Actualización de datos', 'Promociones', 'Cancelación', 'Otros'
+    ]
+    motivo_probs = [0.25, 0.15, 0.12, 0.12, 0.10, 0.08, 0.07, 0.05, 0.03, 0.03]
+    
+    df_calls = pd.DataFrame({
+        'fecha_rep': call_dates,
+        'Motivo': np.random.choice(motivos, n_calls, p=motivo_probs),
+        'id_user': np.random.choice(client_ids, n_calls),
+        'duracion_min': np.random.exponential(5, n_calls),
+        'resuelto': np.random.choice([True, False], n_calls, p=[0.85, 0.15])
+    })
+    
+    # ============ AGENTES (20 agentes) ============
+    n_agents = 20
+    agent_names = [f"Agente {i}" for i in range(1, n_agents + 1)]
+    
+    df_agents = pd.DataFrame({
+        'id_agente': range(1, n_agents + 1),
+        'nombre': agent_names,
+        'winrate': np.random.uniform(0.6, 0.95, n_agents),
+        'casos_ganados': np.random.randint(50, 200, n_agents),
+        'total_casos': np.random.randint(100, 250, n_agents),
+        'calificacion': np.random.uniform(3.5, 5.0, n_agents)
+    })
+    df_agents['winrate'] = df_agents['casos_ganados'] / df_agents['total_casos']
+    
+    # ============ CHURN RAW (para compatibilidad) ============
+    df_churn_raw = pd.DataFrame({
+        'mes': np.random.choice(dates, n_clients),
+        'id_user': client_ids,
+        'churn': churned,
+        'monto_total': amounts,
+        'dias_sin_transacciones': days_no_tx
+    })
+    
+    return {
+        "history": df_history,
+        "calls": df_calls,
+        "agents": df_agents,
+        "future": df_future,
+        "clients": df_clients,
+        "churn_raw": df_churn_raw,
+        "base_datos": None  # No necesario en demo
+    }
+
+# Solo importar ChurnPredictor si no estamos en modo demo
+if not DEMO_MODE:
+    from churn_predictor import ChurnPredictor
 
 # Constantes globales para cálculos
 PESO_PROBABILIDAD = 0.4
@@ -1227,17 +1394,25 @@ def load_data():
 @st.cache_resource
 def get_predictor():
     """Retorna el predictor de churn cacheado"""
+    if DEMO_MODE:
+        return None  # No usar predictor en modo demo
     return ChurnPredictor()
 
 # Cargar datos con caché persistente
 # El caché se mantiene entre navegaciones de pestañas
 if 'data_loaded' not in st.session_state:
     with st.spinner("Cargando datos iniciales..."):
-        st.session_state.data = load_data()
+        if DEMO_MODE:
+            st.session_state.data = generate_dummy_data()
+        else:
+            st.session_state.data = load_data()
         st.session_state.data_loaded = True
 
 # Asegurar que data esté disponible
-data = st.session_state.get('data', load_data())
+if DEMO_MODE:
+    data = st.session_state.get('data', generate_dummy_data())
+else:
+    data = st.session_state.get('data', load_data())
 
 # ============================================================
 # CACHÉ PARA PESTAÑAS - Evitar recarga al cambiar de pestaña
@@ -1264,6 +1439,24 @@ def get_filtros_hash(filtros_dict):
     import hashlib
     filtros_str = str(sorted(filtros_dict.items()))
     return hashlib.md5(filtros_str.encode()).hexdigest()
+
+# Banner de modo demo
+if DEMO_MODE:
+    st.markdown("""
+        <div style="background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%); 
+                    padding: 0.8rem 1.5rem; 
+                    border-radius: 8px; 
+                    margin-bottom: 1rem;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 0.5rem;">
+            <span style="font-size: 1.5rem;">🎭</span>
+            <span style="color: white; font-weight: 600; font-size: 1rem;">
+                MODO DEMO - Datos ficticios para demostración
+            </span>
+        </div>
+    """, unsafe_allow_html=True)
 
 # Sidebar
 with st.sidebar:
