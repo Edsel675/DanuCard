@@ -34,26 +34,85 @@ if 'cache_cleared' not in st.session_state:
 # CONFIGURACIÓN DE ARCHIVOS EN GOOGLE DRIVE (para deploy en la nube)
 # ============================================================
 # IDs de Google Drive para archivos grandes (configurar en Streamlit Secrets)
+def get_gdrive_id(key):
+    """Obtiene ID de Google Drive desde secrets o variables de entorno"""
+    # Primero intentar desde st.secrets
+    try:
+        if hasattr(st, 'secrets') and key in st.secrets:
+            return st.secrets[key]
+    except:
+        pass
+    # Luego desde variables de entorno
+    return os.environ.get(key, None)
+
 GDRIVE_IDS = {
-    'resultado_churn_por_mes': os.environ.get('CHURN_CSV_GDRIVE_ID', st.secrets.get('CHURN_CSV_GDRIVE_ID', None) if hasattr(st, 'secrets') else None),
-    'BaseDeDatos': os.environ.get('BASE_DATOS_GDRIVE_ID', st.secrets.get('BASE_DATOS_GDRIVE_ID', None) if hasattr(st, 'secrets') else None),
+    'resultado_churn_por_mes': get_gdrive_id('CHURN_CSV_GDRIVE_ID'),
+    'BaseDeDatos': get_gdrive_id('BASE_DATOS_GDRIVE_ID'),
 }
 
 def download_from_gdrive(file_id: str, destination: str, file_name: str = "archivo"):
-    """Descarga un archivo desde Google Drive si no existe localmente"""
+    """Descarga un archivo desde Google Drive, manejando archivos grandes"""
     if os.path.exists(destination):
-        return True
+        # Verificar que el archivo no esté vacío o corrupto
+        if os.path.getsize(destination) > 1000:  # Mayor a 1KB
+            return True
+        else:
+            os.remove(destination)  # Eliminar archivo corrupto
     
     if not file_id:
         return False
     
-    URL = f"https://drive.google.com/uc?export=download&id={file_id}&confirm=t"
-    
     try:
+        import requests
+        
         st.info(f"📥 Descargando {file_name}... (esto puede tomar unos segundos)")
-        urllib.request.urlretrieve(URL, destination)
-        st.success(f"✅ {file_name} descargado exitosamente")
-        return True
+        
+        # URL para descarga directa
+        URL = "https://drive.google.com/uc?export=download"
+        
+        session = requests.Session()
+        response = session.get(URL, params={'id': file_id}, stream=True)
+        
+        # Verificar si hay token de confirmación para archivos grandes
+        token = None
+        for key, value in response.cookies.items():
+            if key.startswith('download_warning'):
+                token = value
+                break
+        
+        if token:
+            params = {'id': file_id, 'confirm': token}
+            response = session.get(URL, params=params, stream=True)
+        
+        # Guardar archivo
+        with open(destination, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=32768):
+                if chunk:
+                    f.write(chunk)
+        
+        # Verificar que se descargó correctamente
+        if os.path.getsize(destination) > 1000:
+            st.success(f"✅ {file_name} descargado exitosamente")
+            return True
+        else:
+            os.remove(destination)
+            st.error(f"❌ El archivo {file_name} no se descargó correctamente")
+            return False
+            
+    except ImportError:
+        # Si no hay requests, usar método alternativo con urllib
+        try:
+            URL = f"https://drive.google.com/uc?export=download&id={file_id}&confirm=t"
+            urllib.request.urlretrieve(URL, destination)
+            if os.path.getsize(destination) > 1000:
+                st.success(f"✅ {file_name} descargado exitosamente")
+                return True
+            else:
+                os.remove(destination)
+                return False
+        except Exception as e:
+            st.error(f"❌ Error descargando {file_name}: {e}")
+            return False
     except Exception as e:
         st.error(f"❌ Error descargando {file_name}: {e}")
         return False
