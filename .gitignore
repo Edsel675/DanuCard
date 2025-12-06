@@ -1,0 +1,59 @@
+# Entorno virtual de Python
+venv/
+env/
+.venv/
+.env/
+
+# Archivos de Python compilados
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Archivos de distribución / empaquetado
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Archivos grandes (exceden límite de GitHub de 100MB)
+app/BaseDeDatos.csv
+app/resultado_churn_por_mes.csv
+app/churn_model.pkl
+app/churn_scaler.pkl
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbnails
+._*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Archivos de configuración local
+.env
+.env.local
+
+# Assets temporales
+assets/

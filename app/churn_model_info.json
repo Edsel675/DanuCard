@@ -1,0 +1,22 @@
+{
+  "model_type": "RandomForestClassifier",
+  "hyperparameters": {
+    "n_estimators": 250,
+    "max_depth": 25,
+    "min_samples_split": 50,
+    "min_samples_leaf": 25,
+    "class_weight": "balanced",
+    "criterion": "gini",
+    "random_state": 42
+  },
+  "metrics": {
+    "accuracy": 0.7851476067641158,
+    "precision": 0.6494314583849563,
+    "recall": 0.7970130594178169,
+    "f1_score": 0.7156933393004786,
+    "auc_roc": 0.8851240553767931
+  },
+  "train_size": 697799,
+  "test_size": 174450,
+  "n_features": 11
+}

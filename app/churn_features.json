@@ -1,0 +1,46 @@
+{
+  "features": [
+    "tenure_months",
+    "tx_count",
+    "tx_per_contact",
+    "amount_sum",
+    "tx_per_month",
+    "avg_gap_days",
+    "cc_days_since_last_no hubo contacto",
+    "usertype_HYBRID",
+    "qualification",
+    "cc_fcr_rate_no hubo contacto",
+    "is_premium_True"
+  ],
+  "numeric_features": [
+    "tenure_months",
+    "tx_count",
+    "tx_per_contact",
+    "amount_sum",
+    "tx_per_month",
+    "avg_gap_days",
+    "qualification"
+  ],
+  "categorical_features": [
+    "cc_days_since_last_no hubo contacto",
+    "usertype_HYBRID",
+    "cc_fcr_rate_no hubo contacto",
+    "is_premium_True"
+  ],
+  "categorical_cols_base": [
+    "creationflow",
+    "gender",
+    "occupation",
+    "state",
+    "usertype",
+    "userchannel",
+    "cc_csats_mean",
+    "cc_fcr_rate",
+    "high_ticket",
+    "is_digital",
+    "cc_days_since_last",
+    "age_category",
+    "is_premium",
+    "long_gap"
+  ]
+}
