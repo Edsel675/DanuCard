@@ -51,7 +51,7 @@ GDRIVE_IDS = {
 }
 
 def download_from_gdrive(file_id: str, destination: str, file_name: str = "archivo"):
-    """Descarga un archivo desde Google Drive, manejando archivos grandes"""
+    """Descarga un archivo desde Google Drive usando gdown"""
     if os.path.exists(destination):
         # Verificar que el archivo no esté vacío o corrupto
         if os.path.getsize(destination) > 1000:  # Mayor a 1KB
@@ -63,58 +63,30 @@ def download_from_gdrive(file_id: str, destination: str, file_name: str = "archi
         return False
     
     try:
-        import requests
+        import gdown
         
-        st.info(f"📥 Descargando {file_name}... (esto puede tomar unos segundos)")
+        st.info(f"📥 Descargando {file_name}... (esto puede tomar 1-2 minutos para archivos grandes)")
         
-        # URL para descarga directa
-        URL = "https://drive.google.com/uc?export=download"
+        # URL de Google Drive
+        url = f"https://drive.google.com/uc?id={file_id}"
         
-        session = requests.Session()
-        response = session.get(URL, params={'id': file_id}, stream=True)
-        
-        # Verificar si hay token de confirmación para archivos grandes
-        token = None
-        for key, value in response.cookies.items():
-            if key.startswith('download_warning'):
-                token = value
-                break
-        
-        if token:
-            params = {'id': file_id, 'confirm': token}
-            response = session.get(URL, params=params, stream=True)
-        
-        # Guardar archivo
-        with open(destination, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=32768):
-                if chunk:
-                    f.write(chunk)
+        # Descargar con gdown (maneja archivos grandes automáticamente)
+        gdown.download(url, destination, quiet=False, fuzzy=True)
         
         # Verificar que se descargó correctamente
-        if os.path.getsize(destination) > 1000:
-            st.success(f"✅ {file_name} descargado exitosamente")
+        if os.path.exists(destination) and os.path.getsize(destination) > 1000:
+            st.success(f"✅ {file_name} descargado exitosamente ({os.path.getsize(destination) / 1024 / 1024:.1f} MB)")
             return True
         else:
-            os.remove(destination)
+            if os.path.exists(destination):
+                os.remove(destination)
             st.error(f"❌ El archivo {file_name} no se descargó correctamente")
             return False
             
-    except ImportError:
-        # Si no hay requests, usar método alternativo con urllib
-        try:
-            URL = f"https://drive.google.com/uc?export=download&id={file_id}&confirm=t"
-            urllib.request.urlretrieve(URL, destination)
-            if os.path.getsize(destination) > 1000:
-                st.success(f"✅ {file_name} descargado exitosamente")
-                return True
-            else:
-                os.remove(destination)
-                return False
-        except Exception as e:
-            st.error(f"❌ Error descargando {file_name}: {e}")
-            return False
     except Exception as e:
         st.error(f"❌ Error descargando {file_name}: {e}")
+        if os.path.exists(destination):
+            os.remove(destination)
         return False
 
 # Constantes globales para cálculos

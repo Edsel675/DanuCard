@@ -16,17 +16,21 @@ import streamlit as st
 MODEL_GDRIVE_ID = os.environ.get('MODEL_GDRIVE_ID', None)
 
 def download_model_from_gdrive(file_id: str, destination: str):
-    """Descarga un archivo desde Google Drive"""
-    import urllib.request
-    
-    # URL para descarga directa de Google Drive
-    URL = f"https://drive.google.com/uc?export=download&id={file_id}&confirm=t"
-    
+    """Descarga un archivo desde Google Drive usando gdown"""
     try:
-        st.info("📥 Descargando modelo de Machine Learning... (esto puede tomar unos segundos)")
-        urllib.request.urlretrieve(URL, destination)
-        st.success("✅ Modelo descargado exitosamente")
-        return True
+        import gdown
+        
+        st.info("📥 Descargando modelo de Machine Learning... (esto puede tomar 1-2 minutos)")
+        
+        url = f"https://drive.google.com/uc?id={file_id}"
+        gdown.download(url, destination, quiet=False, fuzzy=True)
+        
+        if os.path.exists(destination) and os.path.getsize(destination) > 1000:
+            st.success(f"✅ Modelo descargado exitosamente ({os.path.getsize(destination) / 1024 / 1024:.1f} MB)")
+            return True
+        else:
+            st.error("❌ El modelo no se descargó correctamente")
+            return False
     except Exception as e:
         st.error(f"❌ Error descargando modelo: {e}")
         return False
