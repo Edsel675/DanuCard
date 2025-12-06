@@ -31,11 +31,11 @@ if 'cache_cleared' not in st.session_state:
     st.session_state.cache_cleared = True
 
 # ============================================================
-# CONFIGURACIÓN DE ARCHIVOS EN GOOGLE DRIVE (para deploy en la nube)
+# CONFIGURACIÓN DE ARCHIVOS EXTERNOS (para deploy en la nube)
 # ============================================================
-# IDs de Google Drive para archivos grandes (configurar en Streamlit Secrets)
-def get_gdrive_id(key):
-    """Obtiene ID de Google Drive desde secrets o variables de entorno"""
+# Soporta: IDs de Google Drive O URLs directas (Dropbox con ?dl=1)
+def get_file_source(key):
+    """Obtiene ID o URL desde secrets o variables de entorno"""
     # Primero intentar desde st.secrets
     try:
         if hasattr(st, 'secrets') and key in st.secrets:
@@ -45,13 +45,15 @@ def get_gdrive_id(key):
     # Luego desde variables de entorno
     return os.environ.get(key, None)
 
+# Configuración de archivos externos
+# Puede ser ID de Google Drive o URL completa de Dropbox
 GDRIVE_IDS = {
-    'resultado_churn_por_mes': get_gdrive_id('CHURN_CSV_GDRIVE_ID'),
-    'BaseDeDatos': get_gdrive_id('BASE_DATOS_GDRIVE_ID'),
+    'resultado_churn_por_mes': get_file_source('CHURN_CSV_GDRIVE_ID'),
+    'BaseDeDatos': get_file_source('BASE_DATOS_GDRIVE_ID'),
 }
 
-def download_from_gdrive(file_id: str, destination: str, file_name: str = "archivo"):
-    """Descarga un archivo desde Google Drive usando gdown"""
+def download_file(url_or_id: str, destination: str, file_name: str = "archivo", source: str = "auto"):
+    """Descarga un archivo desde Google Drive o URL directa (Dropbox, etc.)"""
     if os.path.exists(destination):
         # Verificar que el archivo no esté vacío o corrupto
         if os.path.getsize(destination) > 1000:  # Mayor a 1KB
@@ -59,28 +61,37 @@ def download_from_gdrive(file_id: str, destination: str, file_name: str = "archi
         else:
             os.remove(destination)  # Eliminar archivo corrupto
     
-    if not file_id:
+    if not url_or_id:
         return False
     
+    st.info(f"📥 Descargando {file_name}... (esto puede tomar 1-2 minutos)")
+    
     try:
-        import gdown
+        # Detectar si es URL directa (Dropbox, etc.) o ID de Google Drive
+        if url_or_id.startswith('http'):
+            # URL directa - usar requests
+            import requests
+            response = requests.get(url_or_id, stream=True, timeout=300)
+            response.raise_for_status()
+            
+            with open(destination, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+        else:
+            # ID de Google Drive - usar gdown
+            import gdown
+            url = f"https://drive.google.com/uc?id={url_or_id}"
+            gdown.download(url, destination, quiet=False, fuzzy=True)
         
-        st.info(f"📥 Descargando {file_name}... (esto puede tomar 1-2 minutos para archivos grandes)")
-        
-        # URL de Google Drive
-        url = f"https://drive.google.com/uc?id={file_id}"
-        
-        # Descargar con gdown (maneja archivos grandes automáticamente)
-        gdown.download(url, destination, quiet=False, fuzzy=True)
-        
-        # Verificar que se descargó correctamente
+        # Verificar descarga
         if os.path.exists(destination) and os.path.getsize(destination) > 1000:
-            st.success(f"✅ {file_name} descargado exitosamente ({os.path.getsize(destination) / 1024 / 1024:.1f} MB)")
+            size_mb = os.path.getsize(destination) / 1024 / 1024
+            st.success(f"✅ {file_name} descargado ({size_mb:.1f} MB)")
             return True
         else:
             if os.path.exists(destination):
                 os.remove(destination)
-            st.error(f"❌ El archivo {file_name} no se descargó correctamente")
+            st.error(f"❌ {file_name} no se descargó correctamente")
             return False
             
     except Exception as e:
@@ -749,12 +760,13 @@ AGENTS_FILE = os.path.join(base_dir, "agent_score_central_period_v2.csv")
 CHURN_FILE = os.path.join(base_dir, "resultado_churn_por_mes.csv")
 BASE_DATOS_FILE = os.path.join(base_dir, "BaseDeDatos.csv")
 
-# Intentar descargar archivos grandes de Google Drive si no existen
+# Intentar descargar archivos grandes si no existen
+# Soporta: Google Drive (ID) o URL directa (Dropbox con dl=1)
 if not os.path.exists(CHURN_FILE) and GDRIVE_IDS.get('resultado_churn_por_mes'):
-    download_from_gdrive(GDRIVE_IDS['resultado_churn_por_mes'], CHURN_FILE, "datos de churn")
+    download_file(GDRIVE_IDS['resultado_churn_por_mes'], CHURN_FILE, "datos de churn")
 
 if not os.path.exists(BASE_DATOS_FILE) and GDRIVE_IDS.get('BaseDeDatos'):
-    download_from_gdrive(GDRIVE_IDS['BaseDeDatos'], BASE_DATOS_FILE, "base de datos")
+    download_file(GDRIVE_IDS['BaseDeDatos'], BASE_DATOS_FILE, "base de datos")
 
 def calcular_ingresos_reales(df_transacciones):
     """
