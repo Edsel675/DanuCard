@@ -21,6 +21,7 @@ import plotly.graph_objects as go
 import numpy as np
 import os
 import re
+import urllib.request
 from datetime import datetime
 from churn_predictor import ChurnPredictor
 
@@ -28,6 +29,34 @@ from churn_predictor import ChurnPredictor
 if 'cache_cleared' not in st.session_state:
     st.cache_data.clear()
     st.session_state.cache_cleared = True
+
+# ============================================================
+# CONFIGURACIÓN DE ARCHIVOS EN GOOGLE DRIVE (para deploy en la nube)
+# ============================================================
+# IDs de Google Drive para archivos grandes (configurar en Streamlit Secrets)
+GDRIVE_IDS = {
+    'resultado_churn_por_mes': os.environ.get('CHURN_CSV_GDRIVE_ID', st.secrets.get('CHURN_CSV_GDRIVE_ID', None) if hasattr(st, 'secrets') else None),
+    'BaseDeDatos': os.environ.get('BASE_DATOS_GDRIVE_ID', st.secrets.get('BASE_DATOS_GDRIVE_ID', None) if hasattr(st, 'secrets') else None),
+}
+
+def download_from_gdrive(file_id: str, destination: str, file_name: str = "archivo"):
+    """Descarga un archivo desde Google Drive si no existe localmente"""
+    if os.path.exists(destination):
+        return True
+    
+    if not file_id:
+        return False
+    
+    URL = f"https://drive.google.com/uc?export=download&id={file_id}&confirm=t"
+    
+    try:
+        st.info(f"📥 Descargando {file_name}... (esto puede tomar unos segundos)")
+        urllib.request.urlretrieve(URL, destination)
+        st.success(f"✅ {file_name} descargado exitosamente")
+        return True
+    except Exception as e:
+        st.error(f"❌ Error descargando {file_name}: {e}")
+        return False
 
 # Constantes globales para cálculos
 PESO_PROBABILIDAD = 0.4
@@ -689,6 +718,13 @@ AGENTS_FILE = os.path.join(base_dir, "agent_score_central_period_v2.csv")
 CHURN_FILE = os.path.join(base_dir, "resultado_churn_por_mes.csv")
 BASE_DATOS_FILE = os.path.join(base_dir, "BaseDeDatos.csv")
 
+# Intentar descargar archivos grandes de Google Drive si no existen
+if not os.path.exists(CHURN_FILE) and GDRIVE_IDS.get('resultado_churn_por_mes'):
+    download_from_gdrive(GDRIVE_IDS['resultado_churn_por_mes'], CHURN_FILE, "datos de churn")
+
+if not os.path.exists(BASE_DATOS_FILE) and GDRIVE_IDS.get('BaseDeDatos'):
+    download_from_gdrive(GDRIVE_IDS['BaseDeDatos'], BASE_DATOS_FILE, "base de datos")
+
 def calcular_ingresos_reales(df_transacciones):
     """
     Calcula los ingresos reales de DANU basados en comisiones por tipo de transacción.
@@ -1217,8 +1253,29 @@ def load_data():
         }
 
     except FileNotFoundError as e:
-        st.error(f"Error Crítico: No se encontró el archivo **{e.filename}**.")
-        st.warning("Por favor, asegúrate de que los archivos CSV estén en la misma carpeta que `app.py`.")
+        st.error(f"❌ Error Crítico: No se encontró el archivo **{e.filename}**.")
+        st.markdown("""
+        ### 📋 Solución para Deploy en la Nube
+        
+        Los archivos CSV grandes deben subirse a Google Drive y configurarse en Streamlit Secrets:
+        
+        1. **Sube los archivos a Google Drive:**
+           - `resultado_churn_por_mes.csv`
+           - `BaseDeDatos.csv`
+        
+        2. **Comparte cada archivo** (Click derecho → Compartir → "Cualquier persona con el enlace")
+        
+        3. **Copia el ID de cada archivo** (la parte entre `/d/` y `/view` del enlace)
+        
+        4. **Agrega en Streamlit Secrets:**
+        ```toml
+        MODEL_GDRIVE_ID = "tu_id_del_modelo"
+        CHURN_CSV_GDRIVE_ID = "tu_id_del_csv_churn"
+        BASE_DATOS_GDRIVE_ID = "tu_id_del_csv_base_datos"
+        ```
+        
+        5. **Reinicia la app** en Streamlit Cloud
+        """)
         st.stop()
     except Exception as e:
         st.error(f"Ocurrió un error cargando los datos: {e}")
