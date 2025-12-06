@@ -32,7 +32,7 @@ wheels/
 app/BaseDeDatos.csv
 app/resultado_churn_por_mes.csv
 app/churn_model.pkl
-app/churn_scaler.pkl
+# app/churn_scaler.pkl - Este es pequeño (4KB), se puede subir
 
 # macOS
 .DS_Store

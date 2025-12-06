@@ -7,6 +7,29 @@ import os
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Optional, Tuple
+import streamlit as st
+
+# URL del modelo en Google Drive (configurar después de subir el archivo)
+# Para obtener el ID: Subir archivo a Google Drive -> Click derecho -> Obtener enlace -> Copiar ID
+# El enlace tiene formato: https://drive.google.com/file/d/FILE_ID/view
+# Usar el FILE_ID aquí:
+MODEL_GDRIVE_ID = os.environ.get('MODEL_GDRIVE_ID', None)
+
+def download_model_from_gdrive(file_id: str, destination: str):
+    """Descarga un archivo desde Google Drive"""
+    import urllib.request
+    
+    # URL para descarga directa de Google Drive
+    URL = f"https://drive.google.com/uc?export=download&id={file_id}&confirm=t"
+    
+    try:
+        st.info("📥 Descargando modelo de Machine Learning... (esto puede tomar unos segundos)")
+        urllib.request.urlretrieve(URL, destination)
+        st.success("✅ Modelo descargado exitosamente")
+        return True
+    except Exception as e:
+        st.error(f"❌ Error descargando modelo: {e}")
+        return False
 
 class ChurnPredictor:
     """Carga y usa el modelo de predicción de churn"""
@@ -28,10 +51,24 @@ class ChurnPredictor:
         self._load_model_info()
     
     def _load_model(self):
-        """Carga el modelo entrenado"""
+        """Carga el modelo entrenado, descargándolo si es necesario"""
         model_path = os.path.join(self.model_dir, 'churn_model.pkl')
+        
+        # Si el modelo no existe localmente, intentar descargarlo
         if not os.path.exists(model_path):
-            raise FileNotFoundError(f"No se encontró el modelo en {model_path}")
+            if MODEL_GDRIVE_ID:
+                success = download_model_from_gdrive(MODEL_GDRIVE_ID, model_path)
+                if not success:
+                    raise FileNotFoundError(
+                        f"No se pudo descargar el modelo. "
+                        f"Por favor verifica que el archivo esté compartido públicamente en Google Drive."
+                    )
+            else:
+                raise FileNotFoundError(
+                    f"No se encontró el modelo en {model_path}. "
+                    f"Para la versión en la nube, configura la variable MODEL_GDRIVE_ID en Streamlit Secrets."
+                )
+        
         with open(model_path, 'rb') as f:
             self.model = pickle.load(f)
     
@@ -163,4 +200,3 @@ class ChurnPredictor:
             'warnings': warnings,
             'total_records': len(df)
         }
-
