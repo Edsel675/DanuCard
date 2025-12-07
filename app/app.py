@@ -27,7 +27,8 @@ import random
 # ============================================================
 # 🎭 MODO DEMO - Datos ficticios para demostración
 # ============================================================
-DEMO_MODE = True  # Cambiar a False para usar datos reales
+# IMPORTANTE: Esta rama usa datos ficticios, no requiere archivos CSV
+DEMO_MODE = True
 
 # Limpiar caché al inicio (solo una vez por sesión)
 if 'cache_cleared' not in st.session_state:
