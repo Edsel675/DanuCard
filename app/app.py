@@ -1440,24 +1440,6 @@ def get_filtros_hash(filtros_dict):
     filtros_str = str(sorted(filtros_dict.items()))
     return hashlib.md5(filtros_str.encode()).hexdigest()
 
-# Banner de modo demo
-if DEMO_MODE:
-    st.markdown("""
-        <div style="background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%); 
-                    padding: 0.8rem 1.5rem; 
-                    border-radius: 8px; 
-                    margin-bottom: 1rem;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 0.5rem;">
-            <span style="font-size: 1.5rem;">🎭</span>
-            <span style="color: white; font-weight: 600; font-size: 1rem;">
-                MODO DEMO - Datos ficticios para demostración
-            </span>
-        </div>
-    """, unsafe_allow_html=True)
-
 # Sidebar
 with st.sidebar:
     # Cargar logo con ruta absoluta y diseño mejorado
