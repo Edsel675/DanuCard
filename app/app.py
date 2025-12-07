@@ -4631,7 +4631,7 @@ def render_clients_old():
                         <div style="display: grid; gap: 0.75rem;">
                             <div>
                                 <p style="margin: 0; color: #64748b; font-size: 0.85rem; font-weight: 600;">ID del Cliente</p>
-                                <p style="margin: 0; color: #1e293b; font-size: 1.2rem; font-weight: 700;">{int(cliente_seleccionado['ID'])}</p>
+                                <p style="margin: 0; color: #1e293b; font-size: 1.2rem; font-weight: 700;">{cliente_seleccionado['ID']}</p>
                             </div>
                             <div>
                                 <p style="margin: 0; color: #64748b; font-size: 0.85rem; font-weight: 600;">Segmento</p>
@@ -5578,7 +5578,7 @@ def render_clients():
                         <div style="display: grid; gap: 0.75rem;">
                             <div>
                                 <p style="margin: 0; color: #64748b; font-size: 0.85rem; font-weight: 600;">ID del Cliente</p>
-                                <p style="margin: 0; color: #1e293b; font-size: 1.2rem; font-weight: 700;">{int(cliente_seleccionado['ID'])}</p>
+                                <p style="margin: 0; color: #1e293b; font-size: 1.2rem; font-weight: 700;">{cliente_seleccionado['ID']}</p>
                             </div>
                             <div>
                                 <p style="margin: 0; color: #64748b; font-size: 0.85rem; font-weight: 600;">Segmento</p>
